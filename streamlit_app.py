@@ -1,40 +1,55 @@
 import streamlit as st
+import pandas as pd
 from datetime import datetime
-from PIL import Image
 
-# สร้างฟังก์ชันเพื่อแสดงสถานะเครื่องมือ
-def display_tool_status(image_path, date, user):
-    st.image(image_path, caption="Tool Image", use_column_width=True)
-    st.write(f"**Date Used:** {date}")
-    st.write(f"**User:** {user}")
+# ข้อมูลเครื่องมือ
+tools_data = {
+    "ชื่อเครื่องมือ": ["เครื่องมือ A", "เครื่องมือ B", "เครื่องมือ C"],
+    "รูปภาพ": ["path/to/image_a.jpg", "path/to/image_b.jpg", "path/to/image_c.jpg"],
+    "สถานะ": ["ว่าง", "ว่าง", "ว่าง"],
+    "วันที่เริ่ม": [None, None, None],
+    "วันที่สิ้นสุด": [None, None, None],
+    "ชื่อผู้ใช้งาน": [None, None, None]
+}
 
-# ชื่อแอป
-st.title("Tool Status App")
+tools_df = pd.DataFrame(tools_data)
 
-# ตัวแปรสำหรับเก็บข้อมูลสถานะ
-if 'tool_status' not in st.session_state:
-    st.session_state.tool_status = {
-        'image_path': None,
-        'date': datetime.now().strftime("%Y-%m-%d"),
-        'user': ''
-    }
+# ฟังก์ชันแสดงสถานะเครื่องมือ
+def display_tools_status(tools_df):
+    for index, row in tools_df.iterrows():
+        st.image(row["รูปภาพ"], caption=row["ชื่อเครื่องมือ"])
+        if row["สถานะ"] == "ถูกใช้งาน":
+            st.write(f"สถานะ: {row['สถานะ']} (ผู้ใช้: {row['ชื่อผู้ใช้งาน']})")
+            st.write(f"วันที่ใช้งาน: {row['วันที่เริ่ม']} - วันที่สิ้นสุด: {row['วันที่สิ้นสุด']}")
+        else:
+            st.write(f"สถานะ: {row['สถานะ']}")
 
-# ฟอร์มสำหรับกรอกข้อมูล
-with st.form(key='tool_status_form'):
-    image_file = st.file_uploader("Upload Image", type=['png', 'jpg', 'jpeg'])
-    if image_file is not None:
-        st.session_state.tool_status['image_path'] = image_file
-        st.session_state.tool_status['image'] = Image.open(image_file)
+# ฟังก์ชันสำหรับการยืมเครื่องมือ
+def borrow_tool(tools_df):
+    user_name = st.text_input("ชื่อผู้ใช้งาน")
+    tool_name = st.selectbox("เลือกเครื่องมือ", tools_df["ชื่อเครื่องมือ"])
+    start_date = st.date_input("วันที่เริ่มใช้งาน", datetime.today())
+    end_date = st.date_input("วันที่สิ้นสุดใช้งาน", datetime.today())
 
-    date = st.text_input("Date Used", st.session_state.tool_status['date'])
-    user = st.text_input("User", st.session_state.tool_status['user'])
-    
-    submit_button = st.form_submit_button("Submit")
+    if st.button("ยืมเครื่องมือ"):
+        # อัปเดตสถานะของเครื่องมือ
+        tool_index = tools_df[tools_df["ชื่อเครื่องมือ"] == tool_name].index[0]
+        tools_df.at[tool_index, "สถานะ"] = "ถูกใช้งาน"
+        tools_df.at[tool_index, "วันที่เริ่ม"] = start_date
+        tools_df.at[tool_index, "วันที่สิ้นสุด"] = end_date
+        tools_df.at[tool_index, "ชื่อผู้ใช้งาน"] = user_name
+        st.success(f"คุณได้ยืม {tool_name} เรียบร้อยแล้ว!")
 
-    if submit_button:
-        st.session_state.tool_status['date'] = date
-        st.session_state.tool_status['user'] = user
+# ส่วนหลักของโปรแกรม
+st.title("โปรแกรมจัดการสถานะเครื่องมือ")
+st.header("สถานะเครื่องมือ")
 
-# แสดงสถานะเครื่องมือเมื่อเปิดโปรแกรม
-if st.session_state.tool_status['image_path']:
-    display_tool_status(st.session_state.tool_status['image'], st.session_state.tool_status['date'], st.session_state.tool_status['user'])
+# แสดงสถานะเครื่องมือ
+display_tools_status(tools_df)
+
+# แสดงฟอร์มยืมเครื่องมือ
+st.header("ยืมเครื่องมือ")
+borrow_tool(tools_df)
+
+# แสดงสถานะอัปเดต (อาจจะต้องใช้ session state หรือ database สำหรับการเก็บข้อมูลจริง)
+st.session_state.tools_df = tools_df
